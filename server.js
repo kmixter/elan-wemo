@@ -1,8 +1,69 @@
+const express = require('express');
+const jsonfile = require('jsonfile')
+const node_ssdp_client = require('node-ssdp').Client;
+const request = require('request')
+const url = require('url');
+const xml2js = require('xml2js');
 
-var node_ssdp = require('node-ssdp')
+var id_dict = {}
+const settings_file = 'settings.json'
+var settings = null
+
+function loadSettings() {
+  try {
+    settings = jsonfile.readFileSync(settings_file);
+  } catch (err) {
+    console.log("Problem reading " + settings_file + " : " + err.message)
+    settings = { id_dict: {} }
+  }
+}
+
+function storeSettings() {
+  try {
+    jsonfile.writeFileSync(settings_file, settings);
+  } catch (err) {
+    console.log("Problem writing " + settings_file + " : " + err.message)
+  }
+}
+
+function scanForWemo() {
+  console.log('Scanning network for Wemo')
+  ssdp = new node_ssdp_client({})
+
+  ssdp.on('response', function inResponse(headers, code, rinfo) {
+    parsed = url.parse(headers.LOCATION)
+    request.get(headers.LOCATION, function optionalCallback(err, httpResponse, body) {
+      if (err) {
+        console.error('Discovery fetch of ' + headers.LOCATION + ' failed:', err);
+        return;
+      }
+      xml2js.parseString(body, { explicitArray: false }, function(err, result) {
+        if (err) {
+          console.error('Unable to parse response from ' + headers.LOCATION);
+          return;
+        }
+        if (!('root' in result) || !('device' in result.root) || !('friendlyName' in result.root.device)) {
+          console.error('Result from ' + headers.LOCATION + ' missing root.device.friendlyName');
+          return;
+        }
+        friendlyName = result.root.device.friendlyName;
+        console.log('Found ' + friendlyName + ' at ' + headers.LOCATION);
+        settings.id_dict[friendlyName] = parsed.protocol + '//' + parsed.host;
+      });
+    });
+  });
+
+  ssdp.search('urn:Belkin:device:controllee:1')
+
+  // And after 10 seconds, you want to stop
+  // TODO(kmixter): Check if we can never stop and get new devices automatically.
+  setTimeout(function () {
+    ssdp.stop()
+    storeSettings()
+  }, 10000)
+}
 
 var BASE_PATH = 'http://10.0.1.56'
-var id_dict = {}
 id_dict['master']  = BASE_PATH + ':45800'
 id_dict['kitchen'] = BASE_PATH + ':45801'
 id_dict['outside'] = BASE_PATH + ':45802'
@@ -13,8 +74,6 @@ id_dict['play']    = BASE_PATH + ':45807'
 id_dict['chloe']   = BASE_PATH + ':45808'
 id_dict['aaron']   = BASE_PATH + ':45809'
 id_dict['ethan']   = BASE_PATH + ':45810'
-
-var request = require('request')
 
 function sendSoapRequest(url, on_off) {
   var request_options = {
@@ -56,35 +115,41 @@ function setWemoState(id, on_off) {
   return true
 }
 
-var express = require('express');
-var app = express();
+function start() {
+  loadSettings()
+  scanForWemo()
 
-app.get('/elan-wemo/on/:id', function (req,res) {
-  if (!setWemoState(req.params.id, 1)) {
-    res.send('Failed to turn on wemo device ' + req.params.id);
-  } else {
-    res.send('Turned on wemo device ' + req.params.id);
-  }
-});
+  var app = express();
 
-app.get('/elan-wemo/off/:id', function (req,res) {
-  if (!setWemoState(req.params.id, 0)) {
-    res.send('Failed to turn off wemo device ' + req.params.id);
-  } else {
-    res.send('Turned off wemo device ' + req.params.id);
-  }
-});
+  app.get('/elan-wemo/on/:id', function (req,res) {
+    if (!setWemoState(req.params.id, 1)) {
+      res.send('Failed to turn on wemo device ' + req.params.id);
+    } else {
+      res.send('Turned on wemo device ' + req.params.id);
+    }
+  });
 
-app.get('/elan-wemo/list', function (req,res) {
-  result = 'The following devices are recognized:<br>'
-  for (id in id_dict) {
-    result += '  <li>' + id + ' (<a href="/elan-wemo/on/' + id + '">on</a> '
-            + '<a href="/elan-wemo/off/' + id + '">off</a>)</li>\n'
-  }
-  res.send(result);
-});
+  app.get('/elan-wemo/off/:id', function (req,res) {
+    if (!setWemoState(req.params.id, 0)) {
+      res.send('Failed to turn off wemo device ' + req.params.id);
+    } else {
+      res.send('Turned off wemo device ' + req.params.id);
+    }
+  });
 
-var server = app.listen(process.env.PORT || 80, function () {
-  var port = server.address().port;
-  console.log('elan-wemo listening on port ', port);
-});
+  app.get('/elan-wemo/list', function (req,res) {
+    result = 'The following devices are recognized:<br>'
+    for (id in id_dict) {
+      result += '  <li>' + id + ' (<a href="/elan-wemo/on/' + id + '">on</a> '
+              + '<a href="/elan-wemo/off/' + id + '">off</a>)</li>\n'
+    }
+    res.send(result);
+  });
+
+  var server = app.listen(process.env.PORT || 80, function () {
+    var port = server.address().port;
+    console.log('elan-wemo listening on port ', port);
+  });
+}
+
+start()
