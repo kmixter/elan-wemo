@@ -3,6 +3,7 @@ var app = express();
 
 // reply to request with "Hello World!"
 app.get('/', function (req, res) {
+  console.log('Served up one hello world');
   res.send('Hello World!');
 });
 
