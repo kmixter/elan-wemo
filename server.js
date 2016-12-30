@@ -3,16 +3,16 @@ var node_ssdp = require('node-ssdp')
 
 var BASE_PATH = 'http://10.0.1.56'
 var id_dict = {}
-id_dict['master bed']    = BASE_PATH + ':45800'
-id_dict['kitchen']       = BASE_PATH + ':45801'
-id_dict['outside']       = BASE_PATH + ':45802'
-id_dict['family room']   = BASE_PATH + ':45803'
-id_dict['living room']   = BASE_PATH + ':45804'
-id_dict['all lights']    = BASE_PATH + ':45806'
-id_dict['playroom']      = BASE_PATH + ':45807'
-id_dict['chloe room']    = BASE_PATH + ':45808'
-id_dict['aaron room']    = BASE_PATH + ':45809'
-id_dict['ethan room']    = BASE_PATH + ':45810'
+id_dict['master']  = BASE_PATH + ':45800'
+id_dict['kitchen'] = BASE_PATH + ':45801'
+id_dict['outside'] = BASE_PATH + ':45802'
+id_dict['family']  = BASE_PATH + ':45803'
+id_dict['living']  = BASE_PATH + ':45804'
+id_dict['all']     = BASE_PATH + ':45806'
+id_dict['play']    = BASE_PATH + ':45807'
+id_dict['chloe']   = BASE_PATH + ':45808'
+id_dict['aaron']   = BASE_PATH + ':45809'
+id_dict['ethan']   = BASE_PATH + ':45810'
 
 var request = require('request')
 
@@ -41,6 +41,10 @@ function sendSoapRequest(url, on_off) {
 
 function setWemoState(id, on_off) {
   id = id.toLowerCase();
+  id = id.replace(/(.*)\slights?$/, "$1");  // get rid of optional light(s) at end of request
+  id = id.replace(/(.*)\s(bed)?room$/, "$1");  // get rid of optional (bed)room at end of request
+  id = id.replace(/the\s(.*)/, "$1");  // get rid of optional the at beginning of request
+
   console.log('Request to set ' + id + ' to ' + on_off);
   if (!(id in id_dict)) {
     console.log('ID ' + id + ' is not known')
