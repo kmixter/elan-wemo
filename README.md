@@ -18,11 +18,6 @@ $ git push resin master
 ```
 It should take a few minutes for the code to push. While you wait, lets enable device URLs so we can see the server outside of our local network. This option can be found in the `Actions` tab in your device dashboard.
 
-![Actions Tab](/img/enable-public-URLs.png)
-
-Once the device is updated, you should see this in your logs:
-![log output](/img/log-output.png)
-
 Then in your browser you should be able to open the device URL and see which devices you can
 control:
 

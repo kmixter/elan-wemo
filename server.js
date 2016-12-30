@@ -43,6 +43,7 @@ function setWemoState(id, on_off) {
   id = id.toLowerCase();
   id = id.replace(/(.*)\slights?$/, "$1");  // get rid of optional light(s) at end of request
   id = id.replace(/(.*)\s(bed)?room$/, "$1");  // get rid of optional (bed)room at end of request
+  id = id.replace(/(.*[^\s])room$/, "$1");  // get rid of optional -room at end of request (playroom)
   id = id.replace(/the\s(.*)/, "$1");  // get rid of optional the at beginning of request
 
   console.log('Request to set ' + id + ' to ' + on_off);
