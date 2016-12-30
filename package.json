@@ -1,29 +1,27 @@
 {
-  "name": "simple-server-node",
-  "version": "1.0.0",
-  "description": "A simple Expressjs Web server on resin.io",
+  "name": "elan-wemo",
+  "version": "0.0.0",
+  "description": "HTTP interface to Elan using its WeMo bridge",
   "main": "server.js",
+  "dependencies": {
+    "express": "~4.14.0"
+  },
+  "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/resin-io-projects/simple-server-node.git"
+    "url": "https://github.com/kmixter/elan-wemo"
   },
   "keywords": [
-    "resin.io",
-    "webserver",
-    "nodejs",
-    "expressjs"
+    "elan",
+    "wemo"
   ],
-  "author": "Shaun Mulligan <shaun@resin.io>",
-  "license": "ISC",
+  "author": "Ken Mixter",
+  "license": "BSD-2-Clause",
   "bugs": {
-    "url": "https://github.com/resin-io-projects/simple-server-node/issues"
-  },
-  "homepage": "https://github.com/resin-io-projects/simple-server-node#readme",
-  "dependencies": {
-    "express": "*"
+    "url": "https://github.com/kmixter/elan-wemo/issues"
   }
 }
