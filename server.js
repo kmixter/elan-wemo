@@ -1,7 +1,8 @@
 const express = require('express');
-const jsonfile = require('jsonfile')
+const jsonfile = require('jsonfile');
+const net = require('net');
 const node_ssdp_client = require('node-ssdp').Client;
-const request = require('request')
+const request = require('request');
 const url = require('url');
 const xml2js = require('xml2js');
 
@@ -32,25 +33,26 @@ function scanForWemo() {
 
   ssdp.on('response', function inResponse(headers, code, rinfo) {
     parsed = url.parse(headers.LOCATION)
-    request.get(headers.LOCATION, function optionalCallback(err, httpResponse, body) {
-      if (err) {
-        console.error('Discovery fetch of ' + headers.LOCATION + ' failed:', err);
-        return;
-      }
-      xml2js.parseString(body, { explicitArray: false }, function(err, result) {
-        if (err) {
-          console.error('Unable to parse response from ' + headers.LOCATION);
-          return;
-        }
-        if (!('root' in result) || !('device' in result.root) || !('friendlyName' in result.root.device)) {
-          console.error('Result from ' + headers.LOCATION + ' missing root.device.friendlyName');
-          return;
-        }
-        friendlyName = result.root.device.friendlyName;
-        console.log('Found ' + friendlyName + ' at ' + headers.LOCATION);
-        settings.id_dict[friendlyName] = parsed.protocol + '//' + parsed.host;
-      });
+
+    // This poor HTTP client implementation is necessary because Elan's
+    // setup URL HTTP server does not return valid HTTP responses, so no
+    // existing node.js HTTP client will work with it.
+    var client = new net.Socket();
+    client.connect(parsed.port, parsed.hostname, function () {
+      console.log('Connected to ' + headers.LOCATION);
+      client.write('GET ' + parsed.pathname + ' HTTP/1.1\r\n' +
+                   'User-Agent: dumbclient/1.0\r\n' +
+                   'Accept: */*\r\n\r\n');
     });
+    client.on('data', function(data) {
+      console.log('Got data: ', data);
+      var match = /friendlyName.*\>(.*)\</.exec(data);
+      if (match == null) return;
+      friendlyName = match[1]
+      console.log('Found ' + friendlyName + ' at ' + headers.LOCATION);
+      settings.id_dict[friendlyName] = parsed.protocol + '//' + parsed.host;
+    });
+    client.on('close', function() { console.log('Connection closed'); });
   });
 
   ssdp.search('urn:Belkin:device:controllee:1')
