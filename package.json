@@ -4,7 +4,8 @@
   "description": "HTTP interface to Elan using its WeMo bridge",
   "main": "server.js",
   "dependencies": {
-    "express": "~4.14.0"
+    "express": "~4.14.0",
+    "request": "~2.79.0"
   },
   "devDependencies": {},
   "scripts": {
