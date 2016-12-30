@@ -66,8 +66,7 @@ app.get('/elan-wemo/off/:id', function (req,res) {
   }
 });
 
-//start a server on port 8080 and log its start to our console
-var server = app.listen(8080, function () {
+var server = app.listen(process.env.PORT || 80, function () {
   var port = server.address().port;
   console.log('elan-wemo listening on port ', port);
 
