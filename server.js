@@ -10,12 +10,16 @@ var id_dict = {}
 const settings_file = 'settings.json'
 var settings = null
 
+function createEmptySettings() {
+  return { id_dict: {} }
+}
+
 function loadSettings() {
   try {
     settings = jsonfile.readFileSync(settings_file);
   } catch (err) {
     console.log("Problem reading " + settings_file + " : " + err.message)
-    settings = { id_dict: {} }
+    settings = createEmptySettings();
   }
 }
 
@@ -25,6 +29,15 @@ function storeSettings() {
   } catch (err) {
     console.log("Problem writing " + settings_file + " : " + err.message)
   }
+}
+
+function canonicalizeId(id) {
+  id = id.toLowerCase();
+  id = id.replace(/(.*)\slights?$/, "$1");  // get rid of optional light(s) at end of request
+  id = id.replace(/(.*)\s(bed)?room$/, "$1");  // get rid of optional (bed)room at end of request
+  id = id.replace(/(.*[^\s])room$/, "$1");  // get rid of optional -room at end of request (playroom)
+  id = id.replace(/the\s(.*)/, "$1");  // get rid of optional the at beginning of request
+  return id;
 }
 
 function scanForWemo() {
@@ -45,11 +58,11 @@ function scanForWemo() {
                    'Accept: */*\r\n\r\n');
     });
     client.on('data', function(data) {
-      console.log('Got data: ', data);
       var match = /friendlyName.*\>(.*)\</.exec(data);
       if (match == null) return;
       friendlyName = match[1]
       console.log('Found ' + friendlyName + ' at ' + headers.LOCATION);
+      friendlyName = canonicalizeId(friendlyName);
       settings.id_dict[friendlyName] = parsed.protocol + '//' + parsed.host;
     });
     client.on('close', function() { console.log('Connection closed'); });
@@ -101,11 +114,7 @@ function sendSoapRequest(url, on_off) {
 };
 
 function setWemoState(id, on_off) {
-  id = id.toLowerCase();
-  id = id.replace(/(.*)\slights?$/, "$1");  // get rid of optional light(s) at end of request
-  id = id.replace(/(.*)\s(bed)?room$/, "$1");  // get rid of optional (bed)room at end of request
-  id = id.replace(/(.*[^\s])room$/, "$1");  // get rid of optional -room at end of request (playroom)
-  id = id.replace(/the\s(.*)/, "$1");  // get rid of optional the at beginning of request
+  id = canonicalizeId(id);
 
   console.log('Request to set ' + id + ' to ' + on_off);
   if (!(id in id_dict)) {
