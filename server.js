@@ -74,6 +74,15 @@ app.get('/elan-wemo/off/:id', function (req,res) {
   }
 });
 
+app.get('/elan-wemo/list', function (req,res) {
+  result = 'The following devices are recognized:<br>'
+  for (id in id_dict) {
+    result += '  <li>' + id + ' (<a href="/elan-wemo/on/' + id + '">on</a> '
+            + '<a href="/elan-wemo/off/' + id + '">off</a>)</li>\n'
+  }
+  res.send(result);
+});
+
 var server = app.listen(process.env.PORT || 80, function () {
   var port = server.address().port;
   console.log('elan-wemo listening on port ', port);
