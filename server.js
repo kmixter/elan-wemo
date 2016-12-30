@@ -1,3 +1,6 @@
+
+var node_ssdp = require('node-ssdp')
+
 var BASE_PATH = 'http://10.0.1.56'
 var id_dict = {}
 id_dict['master bed']    = BASE_PATH + ':45800'
@@ -7,9 +10,9 @@ id_dict['family room']   = BASE_PATH + ':45803'
 id_dict['living room']   = BASE_PATH + ':45804'
 id_dict['all lights']    = BASE_PATH + ':45806'
 id_dict['playroom']      = BASE_PATH + ':45807'
-id_dict['chloe\'s room'] = BASE_PATH + ':45808'
-id_dict['aaron\'s room'] = BASE_PATH + ':45809'
-id_dict['ethan\'s room'] = BASE_PATH + ':45810'
+id_dict['chloe room']    = BASE_PATH + ':45808'
+id_dict['aaron room']    = BASE_PATH + ':45809'
+id_dict['ethan room']    = BASE_PATH + ':45810'
 
 var request = require('request')
 
@@ -37,6 +40,7 @@ function sendSoapRequest(url, on_off) {
 };
 
 function setWemoState(id, on_off) {
+  id = id.toLowerCase();
   console.log('Request to set ' + id + ' to ' + on_off);
   if (!(id in id_dict)) {
     console.log('ID ' + id + ' is not known')
@@ -69,5 +73,4 @@ app.get('/elan-wemo/off/:id', function (req,res) {
 var server = app.listen(process.env.PORT || 80, function () {
   var port = server.address().port;
   console.log('elan-wemo listening on port ', port);
-
 });
