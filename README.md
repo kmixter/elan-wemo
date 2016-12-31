@@ -63,32 +63,20 @@ For the Trigger Service, use the Google Assistant Service and pick the
 "Say a phrase with text ingredient" option. Then
 answer as below:
 
--------------------  ---------------------------------
-Google Assistant     Your answer
-Setting
--------------------  ---------------------------------
-What do you want to  Turn on $
-say?
-
-What do you want     OK
-the assistant to
-say in response?
--------------------  ---------------------------------
+| Google Assistant Setting | Your answer                  |
+| ------------------------ | ---------------------------- |
+| What do you want to say? | Turn on $                    |
+| What do you want the assistant to say in response? | OK |
 
 For the Action Service, use the Maker Service and pick the
 "Make a web request" option. Then answer as below:
 
--------------------  ---------------------------------
-Maker Setting        Your answer
--------------------  ---------------------------------
-URL                  http://$HOSTNAME/elan-wemo/up/{{TextField}}
-
-Method               Get
-
-Content Type         text/plain
-
-Body                 (empty)
--------------------  ---------------------------------
+| Maker Setting     | Your answer                                 |
+| ----------------- | ---------------------------------           |
+| URL               | http://$HOSTNAME/elan-wemo/up/{{TextField}} |
+| Method            | Get                                         |
+| Content Type      | text/plain                                  |
+| Body              | (empty)                                     |
 
 Then create the rule. Go back and do the same thing for
 turning lights off, but switch the on to off in the
