@@ -87,7 +87,7 @@ Creating Aliases
 ----------------
 
 It may be helpful to create aliases for some lights. For instance, you might have a device that
-is sometimes called the living room light and sometimes called the family room light. If the device's
+some people call the living room light and others call the family room light. If the device's
 name (from when you set it up) is "living room" you can use this URL to give it an alias of family
 room:
 
