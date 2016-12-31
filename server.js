@@ -1,33 +1,39 @@
 const express = require('express');
 const jsonfile = require('jsonfile');
 const net = require('net');
-const node_ssdp_client = require('node-ssdp').Client;
+const nodeSSDPClient = require('node-ssdp').Client;
 const request = require('request');
 const url = require('url');
 const xml2js = require('xml2js');
 
-const data_dir = process.env.DATA_DIR || '/data'
-const settings_file = data_dir + '/settings.json'
+const dataDir = process.env.DATA_DIR || '/data'
+const settingsFile = dataDir + '/settings.json'
 var settings = null
 
-function createEmptySettings() {
-  return { id_dict: {}, aliases: {} }
+function canonicalizeSettings() {
+  if (!('idDict' in settings)) {
+    settings.idDict = {}
+  }
+  if (!('aliases' in settings)) {
+    settings.aliases = {}
+  }
 }
 
 function loadSettings() {
   try {
-    settings = jsonfile.readFileSync(settings_file);
+    settings = jsonfile.readFileSync(settingsFile);
   } catch (err) {
-    console.log("Problem reading " + settings_file + " : " + err.message)
-    settings = createEmptySettings();
+    console.log("Problem reading " + settingsFile + " : " + err.message)
+    settings = {}
   }
+  canonicalizeSettings();
 }
 
 function storeSettings() {
   try {
-    jsonfile.writeFileSync(settings_file, settings);
+    jsonfile.writeFileSync(settingsFile, settings);
   } catch (err) {
-    console.log("Problem writing " + settings_file + " : " + err.message)
+    console.log("Problem writing " + settingsFile + " : " + err.message)
   }
 }
 
@@ -45,7 +51,7 @@ function canonicalizeId(id, useAliases) {
 
 function scanForWemo() {
   console.log('Scanning network for Wemo')
-  var ssdp = new node_ssdp_client({})
+  var ssdp = new nodeSSDPClient({})
 
   ssdp.on('response', function inResponse(headers, code, rinfo) {
     var parsed = url.parse(headers.LOCATION)
@@ -66,7 +72,7 @@ function scanForWemo() {
       friendlyName = match[1]
       console.log('Found ' + friendlyName + ' at ' + headers.LOCATION);
       friendlyName = canonicalizeId(friendlyName, false);
-      settings.id_dict[friendlyName] = parsed.protocol + '//' + parsed.host;
+      settings.idDict[friendlyName] = parsed.protocol + '//' + parsed.host;
     });
     client.on('close', function() { console.log('Connection closed'); });
   });
@@ -81,8 +87,9 @@ function scanForWemo() {
   }, 10000)
 }
 
-function sendSoapRequest(url, on_off) {
-  var request_options = {
+function sendSoapRequest(url, onOff) {
+  console.log('Sending SOAP request to ' + url);
+  var requestOptions = {
     url: url+'/upnp/control/basicevent1',
     headers: {
       'Accept': '',
@@ -93,27 +100,24 @@ function sendSoapRequest(url, on_off) {
       '<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"' +
       ' s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">' +
       '<s:Body><u:SetBinaryState xmlns:u="urn:Belkin:service:basicevent:1">' +
-      '<BinaryState>' + on_off + '</BinaryState></u:SetBinaryState></s:Body></s:Envelope>'
+      '<BinaryState>' + onOff + '</BinaryState></u:SetBinaryState></s:Body></s:Envelope>'
   };
-  console.log('About to fire ', request_options);
-  request.post(request_options, function optionalCallback(err, httpResponse, body) {
+  request.post(requestOptions, function optionalCallback(err, httpResponse, body) {
     if (err) {
       return console.error('upload failed:', err);
     }
-    console.log('Upload successful!  Server responded with:', body);
   });
 };
 
-function setWemoState(id, on_off) {
+function setWemoState(id, onOff) {
   id = canonicalizeId(id, true);
 
-  console.log('Request to set ' + id + ' to ' + on_off);
-  if (!(id in settings.id_dict)) {
+  console.log('Request to set ' + id + ' to ' + onOff);
+  if (!(id in settings.idDict)) {
     console.log('ID ' + id + ' is not known')
     return false
   }
-  console.log('Making a request to ' + settings.id_dict[id]);
-  sendSoapRequest(settings.id_dict[id], on_off);
+  sendSoapRequest(settings.idDict[id], onOff);
   return true
 }
 
@@ -140,7 +144,7 @@ function start() {
 
   app.get('/elan-wemo/list', function (req,res) {
     result = 'The following devices are recognized:<br>'
-    for (id in settings.id_dict) {
+    for (id in settings.idDict) {
       aliasesList = []
       for (fromId in settings.aliases) {
         if (id == settings.aliases[fromId]) {
@@ -158,7 +162,8 @@ function start() {
   });
 
   app.get('/elan-wemo/clear', function (req,res) {
-    settings = createEmptySettings();
+    settings = {};
+    canonicalizeSettings();
     storeSettings();
     res.send('Cleared all settings');
   });
