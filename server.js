@@ -6,7 +6,6 @@ const request = require('request');
 const url = require('url');
 const xml2js = require('xml2js');
 
-var id_dict = {}
 const settings_file = 'settings.json'
 var settings = null
 
@@ -78,18 +77,6 @@ function scanForWemo() {
   }, 10000)
 }
 
-var BASE_PATH = 'http://10.0.1.56'
-id_dict['master']  = BASE_PATH + ':45800'
-id_dict['kitchen'] = BASE_PATH + ':45801'
-id_dict['outside'] = BASE_PATH + ':45802'
-id_dict['family']  = BASE_PATH + ':45803'
-id_dict['living']  = BASE_PATH + ':45804'
-id_dict['all']     = BASE_PATH + ':45806'
-id_dict['play']    = BASE_PATH + ':45807'
-id_dict['chloe']   = BASE_PATH + ':45808'
-id_dict['aaron']   = BASE_PATH + ':45809'
-id_dict['ethan']   = BASE_PATH + ':45810'
-
 function sendSoapRequest(url, on_off) {
   var request_options = {
     url: url+'/upnp/control/basicevent1',
@@ -104,7 +91,7 @@ function sendSoapRequest(url, on_off) {
         '<BinaryState>' + on_off + '</BinaryState></u:SetBinaryState></s:Body></s:Envelope>'
     }
   };
-  console.log('About to fire ' + request_options);
+  console.log('About to fire ', request_options);
   request.post(request_options, function optionalCallback(err, httpResponse, body) {
     if (err) {
       return console.error('upload failed:', err);
@@ -117,18 +104,17 @@ function setWemoState(id, on_off) {
   id = canonicalizeId(id);
 
   console.log('Request to set ' + id + ' to ' + on_off);
-  if (!(id in id_dict)) {
+  if (!(id in settings.id_dict)) {
     console.log('ID ' + id + ' is not known')
     return false
   }
-  console.log('Would make a request to ' + id_dict[id]);
-  sendSoapRequest(id_dict[id], on_off);
+  console.log('Making a request to ' + settings.id_dict[id]);
+  sendSoapRequest(settings.id_dict[id], on_off);
   return true
 }
 
 function start() {
   loadSettings()
-  scanForWemo()
 
   var app = express();
 
@@ -150,11 +136,22 @@ function start() {
 
   app.get('/elan-wemo/list', function (req,res) {
     result = 'The following devices are recognized:<br>'
-    for (id in id_dict) {
+    for (id in settings.id_dict) {
       result += '  <li>' + id + ' (<a href="/elan-wemo/on/' + id + '">on</a> '
               + '<a href="/elan-wemo/off/' + id + '">off</a>)</li>\n'
     }
     res.send(result);
+  });
+
+  app.get('/elan-wemo/clear', function (req,res) {
+    settings = createEmptySettings();
+    storeSettings();
+    res.send('Cleared all settings');
+  });
+
+  app.get('/elan-wemo/scan', function (req,res) {
+    scanForWemo();
+    res.send('Starting scan');
   });
 
   var server = app.listen(process.env.PORT || 80, function () {
