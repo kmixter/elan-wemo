@@ -45,10 +45,10 @@ function canonicalizeId(id, useAliases) {
 
 function scanForWemo() {
   console.log('Scanning network for Wemo')
-  ssdp = new node_ssdp_client({})
+  var ssdp = new node_ssdp_client({})
 
   ssdp.on('response', function inResponse(headers, code, rinfo) {
-    parsed = url.parse(headers.LOCATION)
+    var parsed = url.parse(headers.LOCATION)
 
     // This poor HTTP client implementation is necessary because Elan's
     // setup URL HTTP server does not return valid HTTP responses, so no
