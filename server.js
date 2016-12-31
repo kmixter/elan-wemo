@@ -6,11 +6,12 @@ const request = require('request');
 const url = require('url');
 const xml2js = require('xml2js');
 
-const settings_file = 'settings.json'
+const data_dir = process.env.DATA_DIR || '/data'
+const settings_file = data_dir + '/settings.json'
 var settings = null
 
 function createEmptySettings() {
-  return { id_dict: {} }
+  return { id_dict: {}, aliases: {} }
 }
 
 function loadSettings() {
@@ -30,12 +31,15 @@ function storeSettings() {
   }
 }
 
-function canonicalizeId(id) {
+function canonicalizeId(id, useAliases) {
   id = id.toLowerCase();
   id = id.replace(/(.*)\slights?$/, "$1");  // get rid of optional light(s) at end of request
   id = id.replace(/(.*)\s(bed)?room$/, "$1");  // get rid of optional (bed)room at end of request
   id = id.replace(/(.*[^\s])room$/, "$1");  // get rid of optional -room at end of request (playroom)
   id = id.replace(/the\s(.*)/, "$1");  // get rid of optional the at beginning of request
+  if (useAliases && id in settings.aliases) {
+    id = settings.aliases[id];
+  }
   return id;
 }
 
@@ -61,7 +65,7 @@ function scanForWemo() {
       if (match == null) return;
       friendlyName = match[1]
       console.log('Found ' + friendlyName + ' at ' + headers.LOCATION);
-      friendlyName = canonicalizeId(friendlyName);
+      friendlyName = canonicalizeId(friendlyName, false);
       settings.id_dict[friendlyName] = parsed.protocol + '//' + parsed.host;
     });
     client.on('close', function() { console.log('Connection closed'); });
@@ -83,13 +87,13 @@ function sendSoapRequest(url, on_off) {
     headers: {
       'Accept': '',
       'Content-type': 'text/xml; charset="utf-8"',
-      'SOAPACTION': '"urn:Belkin:service:basicevent:1#SetBinaryState"',
-      formData: '<?xml version="1.0" encoding="utf-8"?>' +
-        '<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"' +
-        ' s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">' +
-        '<s:Body><u:SetBinaryState xmlns:u="urn:Belkin:service:basicevent:1">' +
-        '<BinaryState>' + on_off + '</BinaryState></u:SetBinaryState></s:Body></s:Envelope>'
-    }
+      'SOAPACTION': '"urn:Belkin:service:basicevent:1#SetBinaryState"' 
+    },
+    body: '<?xml version="1.0" encoding="utf-8"?>' +
+      '<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"' +
+      ' s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">' +
+      '<s:Body><u:SetBinaryState xmlns:u="urn:Belkin:service:basicevent:1">' +
+      '<BinaryState>' + on_off + '</BinaryState></u:SetBinaryState></s:Body></s:Envelope>'
   };
   console.log('About to fire ', request_options);
   request.post(request_options, function optionalCallback(err, httpResponse, body) {
@@ -101,7 +105,7 @@ function sendSoapRequest(url, on_off) {
 };
 
 function setWemoState(id, on_off) {
-  id = canonicalizeId(id);
+  id = canonicalizeId(id, true);
 
   console.log('Request to set ' + id + ' to ' + on_off);
   if (!(id in settings.id_dict)) {
@@ -137,7 +141,17 @@ function start() {
   app.get('/elan-wemo/list', function (req,res) {
     result = 'The following devices are recognized:<br>'
     for (id in settings.id_dict) {
-      result += '  <li>' + id + ' (<a href="/elan-wemo/on/' + id + '">on</a> '
+      aliasesList = []
+      for (fromId in settings.aliases) {
+        if (id == settings.aliases[fromId]) {
+          aliasesList.push(fromId);
+        }
+      }
+      prettyId = id
+      if (aliasesList.length) {
+        prettyId = id + ' (aka ' + aliasesList + ')'
+      }
+      result += '  <li>' + prettyId + ' (<a href="/elan-wemo/on/' + id + '">on</a> '
               + '<a href="/elan-wemo/off/' + id + '">off</a>)</li>\n'
     }
     res.send(result);
@@ -152,6 +166,14 @@ function start() {
   app.get('/elan-wemo/scan', function (req,res) {
     scanForWemo();
     res.send('Starting scan');
+  });
+
+  app.get('/elan-wemo/alias/:fromId/:toId/', function (req,res) {
+    fromId = canonicalizeId(req.params.fromId, false);
+    toId = canonicalizeId(req.params.toId, false);
+    settings.aliases[fromId] = toId;
+    res.send('Created alias from ' + fromId + ' to ' + toId);
+    storeSettings();
   });
 
   var server = app.listen(process.env.PORT || 80, function () {

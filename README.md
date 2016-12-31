@@ -25,4 +25,3 @@ http://$IP/elan-wemo/list
 
 And then turn on your living room lights:
 http://$IP/elan-wemo/on/living room lights
-
